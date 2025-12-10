@@ -26,6 +26,8 @@ import { UserSession } from './entities/user-session.entity';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { randomUUID, randomBytes } from 'crypto';
 import { EmailService } from '../shared/email.service';
+import { generateOTP } from '../utils/otp-generator';
+import { OtpToken } from './entities/otp-token.entity';
 
 @Injectable()
 export class AuthService {
@@ -41,19 +43,26 @@ export class AuthService {
     private sessionRepo: Repository<UserSession>,
     @InjectRepository(PasswordResetToken)
     private passwordResetTokenRepo: Repository<PasswordResetToken>,
+    @InjectRepository(OtpToken)
+    private otpTokenRepo: Repository<OtpToken>,
     private emailService: EmailService,
   ) {}
 
   async validateUser(authPayloadDto: AuthPayloadDto, req: Request) {
     try {
       const phoneNumber = authPayloadDto.phoneNumber?.trim();
+      const email = authPayloadDto.email?.trim().toLowerCase();
 
-      if (!phoneNumber || !authPayloadDto.password) {
-        throw new UnauthorizedException('Phone number and password are required');
+      if ((!phoneNumber && !email) || !authPayloadDto.password) {
+        throw new UnauthorizedException(
+          'Phone number or email and password are required',
+        );
       }
 
       const findUser = await this.userRepository.findOne({
-        where: { phone: phoneNumber, deletedAt: IsNull() },
+        where: phoneNumber
+          ? { phone: phoneNumber, deletedAt: IsNull() }
+          : { email, deletedAt: IsNull() },
         select: { id: true, email: true, passwordHash: true, role: true },
       });
 
@@ -258,44 +267,8 @@ export class AuthService {
     const { email } = forgotPasswordDto;
     const normalizedEmail = email.trim().toLowerCase();
 
-    // Find user by email (exclude soft-deleted users)
-      const user = await this.userRepository.findOne({
-        where: { email: normalizedEmail, deletedAt: IsNull() },
-      });
-
-    // Always return success message for security (don't reveal if email exists)
-    if (!user) {
-      return {
-        message: 'If the email exists, a password reset link has been sent.',
-      };
-    }
-
-    // Invalidate any existing reset tokens for this user
-    await this.passwordResetTokenRepo.update(
-      { userId: user.id, isUsed: false },
-      { isUsed: true },
-    );
-
-    // Generate new reset token
-    const resetToken = randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-
-    // Save reset token
-    const passwordResetToken = this.passwordResetTokenRepo.create({
-      token: resetToken,
-      userId: user.id,
-      expiresAt,
-      isUsed: false,
-    });
-
-    await this.passwordResetTokenRepo.save(passwordResetToken);
-
-    // Send reset email
-    await this.emailService.sendPasswordResetEmail(user.email, resetToken);
-
-    return {
-      message: 'If the email exists, a password reset link has been sent.',
-    };
+    // Send OTP for password reset (do not reveal account existence)
+    return await this.generateOtp(normalizedEmail);
   }
 
   async resetPassword(
@@ -303,38 +276,33 @@ export class AuthService {
   ): Promise<{ message: string }> {
     const { token, newPassword } = resetPasswordDto;
 
-    // Find valid reset token
     const resetToken = await this.passwordResetTokenRepo.findOne({
       where: { token, isUsed: false },
-      relations: ['user'],
     });
 
     if (!resetToken) {
       throw new BadRequestException('Invalid or expired reset token');
     }
 
-    // Check if token is expired
     if (resetToken.expiresAt < new Date()) {
-      throw new BadRequestException('Reset token has expired');
+      resetToken.isUsed = true;
+      await this.passwordResetTokenRepo.save(resetToken);
+      throw new BadRequestException('Invalid or expired reset token');
     }
 
-    // Hash new password
     const hashedPassword = await argon2.hash(newPassword);
 
-    // Update user password
     await this.userRepository.update(resetToken.userId, {
       passwordHash: hashedPassword,
     });
 
-    // Mark token as used
-    resetToken.isUsed = true;
-    await this.passwordResetTokenRepo.save(resetToken);
-
-    // Revoke all user sessions for security
     await this.sessionRepo.update(
       { user: { id: resetToken.userId }, revoked: false },
       { revoked: true },
     );
+
+    resetToken.isUsed = true;
+    await this.passwordResetTokenRepo.save(resetToken);
 
     return {
       message:
@@ -459,4 +427,89 @@ export class AuthService {
 
     return { message: 'Account has been restored successfully' };
   }
+
+  async generateOtp(email: string): Promise<{ message: string }> {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const user = await this.userRepository.findOne({
+      where: { email: normalizedEmail, isActive: true, deletedAt: IsNull() },
+      select: { id: true, email: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User with this email does not exist');
+    }
+
+    await this.otpTokenRepo.update(
+      { userId: user.id, isUsed: false },
+      { isUsed: true },
+    );
+
+    const otp = generateOTP();
+    const otpHash = await argon2.hash(otp);
+
+    const otpToken = this.otpTokenRepo.create({
+      userId: user.id,
+      user,
+      otpHash,
+      destination: user.email,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+      isUsed: false,
+    });
+
+    await this.otpTokenRepo.save(otpToken);
+
+    await this.emailService.sendOtp(user.email, otp);
+
+    return { message: 'OTP has been sent to your email.' };
+  }
+
+  async verifyOtp(body: { email: string; otp: string }): Promise<{ message: string; resetToken: string }> {
+    const normalizedEmail = body.email.trim().toLowerCase();
+    const otp = body.otp.trim();
+
+    const otpRecord = await this.otpTokenRepo
+      .createQueryBuilder('otp')
+      .where('otp.destination = :email', { email: normalizedEmail })
+      .andWhere('otp.isUsed = false')
+      .orderBy('otp.createdAt', 'DESC')
+      .addSelect('otp.otpHash')
+      .getOne();
+
+    if (!otpRecord) {
+      throw new BadRequestException('Invalid or expired OTP');
+    }
+
+    const now = new Date();
+    if (otpRecord.expiresAt < now) {
+      otpRecord.isUsed = true;
+      await this.otpTokenRepo.save(otpRecord);
+      throw new BadRequestException('Invalid or expired OTP');
+    }
+
+    const isMatch = await argon2.verify(otpRecord.otpHash, otp);
+
+    if (!isMatch) {
+      await this.otpTokenRepo.save(otpRecord);
+      throw new BadRequestException('Invalid or expired OTP');
+    }
+
+    otpRecord.isUsed = true;
+    await this.otpTokenRepo.save(otpRecord);
+
+    const resetToken = randomBytes(32).toString('hex');
+    const resetExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    const passwordResetToken = this.passwordResetTokenRepo.create({
+      token: resetToken,
+      userId: otpRecord.userId,
+      expiresAt: resetExpires,
+      isUsed: false,
+    });
+
+    await this.passwordResetTokenRepo.save(passwordResetToken);
+
+    return { message: 'OTP verified successfully.', resetToken };
+  }
+
 }

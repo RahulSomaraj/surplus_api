@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -27,11 +27,15 @@ async function bootstrap() {
     credentials: true,
   });
 
+  const port = Number(process.env.PORT) || 3000;
+  const baseUrl = process.env.API_BASE_URL ?? `http://localhost:${port}`;
+
   // Swagger API Documentation Setup
-  const config = new DocumentBuilder()
+  const swaggerConfig = new DocumentBuilder()
     .setTitle('Surply API')
     .setDescription('API documentation for Surply application')
     .setVersion('1.0')
+    .addServer(baseUrl)
     .addBearerAuth(
       {
         type: 'http',
@@ -47,9 +51,17 @@ async function bootstrap() {
     .addTag('users', 'User management endpoints')
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document);
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('docs', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+    customSiteTitle: 'Surply API Docs',
+  });
 
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(port);
+  const appUrl = await app.getUrl();
+  Logger.log(`Swagger UI available at ${appUrl}/docs`);
+  Logger.log(`Swagger JSON available at ${appUrl}/docs-json`);
 }
 bootstrap();

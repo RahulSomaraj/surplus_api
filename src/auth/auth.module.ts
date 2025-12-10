@@ -11,6 +11,7 @@ import { RevokedToken } from './entities/revoked-token.entity';
 import { JwtAuthGuard } from './guards/jwt.auth.guard';
 import { UserSession } from './entities/user-session.entity';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
+import { OtpToken } from './entities/otp-token.entity';
 import { EmailService } from '../shared/email.service';
 import { UsersModule } from '../users/users.module';
 
@@ -21,6 +22,7 @@ import { UsersModule } from '../users/users.module';
       RevokedToken,
       UserSession,
       PasswordResetToken,
+      OtpToken,
     ]),
     PassportModule,
     ConfigModule,

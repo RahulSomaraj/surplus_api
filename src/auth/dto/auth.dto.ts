@@ -10,17 +10,25 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class AuthPayloadDto {
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: '10-digit Indian mobile number',
     example: '9876543210',
     pattern: '^[6-9]\\d{9}$',
   })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty({ message: 'Phone number is required' })
   @Matches(/^[6-9]\d{9}$/, {
     message: 'Phone number must be a valid 10-digit Indian mobile number',
   })
-  phoneNumber: string;
+  phoneNumber?: string;
+
+  @ApiPropertyOptional({
+    description: 'Email address (alternative to phone login)',
+    example: 'user@example.com',
+  })
+  @IsOptional()
+  @IsEmail({}, { message: 'Email must be a valid email address' })
+  email?: string;
 
   @ApiProperty({
     description: 'User password',
@@ -62,9 +70,27 @@ export class ForgotPasswordDto {
   email: string;
 }
 
+export class VerifyOtpDto {
+  @ApiProperty({
+    description: 'Email address the OTP was sent to',
+    example: 'user@example.com',
+  })
+  @IsNotEmpty({ message: 'Email is required' })
+  @IsEmail({}, { message: 'Email must be a valid email address' })
+  email: string;
+
+  @ApiProperty({
+    description: '4-digit OTP code',
+    example: '1234',
+  })
+  @IsString()
+  @Matches(/^\d{4}$/, { message: 'OTP must be a 4-digit code' })
+  otp: string;
+}
+
 export class ResetPasswordDto {
   @ApiProperty({
-    description: 'Password reset token received via email',
+    description: 'Reset token received after OTP verification',
     example: 'reset-token-abc123xyz',
   })
   @IsString()

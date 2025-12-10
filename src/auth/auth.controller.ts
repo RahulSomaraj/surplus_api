@@ -24,6 +24,7 @@ import {
   ResetPasswordDto,
   UpdatePasswordDto,
   DeleteProfileDto,
+  VerifyOtpDto,
 } from './dto/auth.dto';
 import { AuthService } from './auth.service';
 import type { Response } from 'express';
@@ -204,14 +205,14 @@ export class AuthController {
   @Post('forgot-password')
   @Public()
   @ApiOperation({ 
-    summary: 'Request password reset',
-    description: 'Request a password reset email for the provided email address',
+    summary: 'Request password reset OTP',
+    description: 'Request a 4-digit OTP for password reset. Returns 404 if the email does not exist.',
   })
   @ApiBody({ 
     type: ForgotPasswordDto,
     examples: {
       example1: {
-        summary: 'Password reset request',
+        summary: 'Password reset OTP request',
         value: {
           email: 'user@example.com',
         },
@@ -220,15 +221,15 @@ export class AuthController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Password reset email sent successfully',
+    description: 'OTP sent to the provided email',
     schema: {
       type: 'object',
       properties: {
-        message: { type: 'string', example: 'Password reset email sent successfully' },
+        message: { type: 'string', example: 'OTP has been sent to your email.' },
       },
     },
   })
-  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({ status: 404, description: 'User with this email does not exist' })
   async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
     return await this.authService.forgotPassword(forgotPasswordDto);
   }
@@ -236,14 +237,14 @@ export class AuthController {
   @Post('reset-password')
   @Public()
   @ApiOperation({ 
-    summary: 'Reset password with token',
-    description: 'Reset password using the token received via email',
+    summary: 'Reset password after OTP verification',
+    description: 'Reset password using the reset token returned by OTP verification.',
   })
   @ApiBody({ 
     type: ResetPasswordDto,
     examples: {
       example1: {
-        summary: 'Reset password',
+        summary: 'Reset password with reset token',
         value: {
           token: 'reset-token-abc123xyz',
           newPassword: 'NewPassword123!',
@@ -266,31 +267,6 @@ export class AuthController {
     return await this.authService.resetPassword(resetPasswordDto);
   }
 
-  @Get('profile')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ 
-    summary: 'Get current user profile',
-    description: 'Retrieve the authenticated user profile information',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Profile retrieved successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        id: { type: 'number', example: 1 },
-        email: { type: 'string', example: 'john.doe@example.com' },
-        phone: { type: 'string', example: '9876543210' },
-        role: { type: 'string', example: 'user' },
-        isActive: { type: 'boolean', example: true },
-      },
-    },
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getProfile(@GetUser('id') userId: number) {
-    return this.usersService.findOne(userId);
-  }
 
   @Post('update-password')
   @UseGuards(JwtAuthGuard)
@@ -366,6 +342,29 @@ export class AuthController {
     @Body() deleteProfileDto: DeleteProfileDto,
   ) {
     return await this.authService.deleteProfile(userId, deleteProfileDto);
+  }
+
+  @Post('otp/verify')
+  @Public()
+  @ApiOperation({
+    summary: 'Verify OTP for password reset',
+    description: 'Verify the 4-digit OTP sent to the provided email for password reset.',
+  })
+  @ApiBody({ type: VerifyOtpDto })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP verified successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'OTP verified successfully.' },
+        resetToken: { type: 'string', example: 'reset-token-abc123xyz' },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid or expired OTP' })
+  async verifyOtp(@Body() body: VerifyOtpDto) {
+    return this.authService.verifyOtp(body);
   }
 }
 
