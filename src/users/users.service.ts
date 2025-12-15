@@ -13,6 +13,7 @@ import { User } from './entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as argon2 from 'argon2';
 import { DeleteUserDto } from './dto/delete-user.dto';
+import { Role } from '../common/enums/role.enum';
 
 @Injectable()
 export class UsersService {
@@ -26,6 +27,7 @@ export class UsersService {
   async create(createUserDto: CreateUserDto) {
     try {
       const email = createUserDto.email.trim().toLowerCase();
+      const city = createUserDto.city.trim();
 
       // Check if email already exists
       const emailExists = await this.userRepository.findOne({
@@ -45,6 +47,10 @@ export class UsersService {
         throw new ConflictException('Phone number already exists');
       }
 
+      if (createUserDto.termsAccepted !== true) {
+        throw new ConflictException('Terms must be accepted');
+      }
+
       const { password, phoneNumber } = createUserDto;
       const passwordHash = await argon2.hash(password, {
         type: argon2.argon2id,
@@ -53,8 +59,11 @@ export class UsersService {
       const user = this.userRepository.create({
         email,
         phone: phoneNumber,
+        favoriteCuisine: createUserDto.favoriteCuisine?.trim() || null,
+        city,
+        termsAccepted: true,
         passwordHash,
-        role: 'user',
+        role: createUserDto.role ?? Role.CUSTOMER,
         isActive: true,
       });
       const savedUser = await this.userRepository.save(user);
@@ -79,6 +88,9 @@ export class UsersService {
           phone: true,
           photoURL: true,
           role: true,
+          favoriteCuisine: true,
+          city: true,
+          termsAccepted: true,
           isActive: true,
           createdAt: true,
           updatedAt: true,
@@ -104,6 +116,9 @@ export class UsersService {
           phone: true,
           photoURL: true,
           role: true,
+          favoriteCuisine: true,
+          city: true,
+          termsAccepted: true,
           isActive: true,
           createdAt: true,
           updatedAt: true,
@@ -158,6 +173,26 @@ export class UsersService {
           type: argon2.argon2id,
         });
         delete updateData.password;
+      }
+
+      if (updateUserDto.role) {
+        updateData.role = updateUserDto.role;
+      }
+
+      if (updateUserDto.favoriteCuisine !== undefined) {
+        updateData.favoriteCuisine =
+          updateUserDto.favoriteCuisine?.trim() || null;
+      }
+
+      if (updateUserDto.city !== undefined) {
+        updateData.city = updateUserDto.city.trim();
+      }
+
+      if (updateUserDto.termsAccepted !== undefined) {
+        if (updateUserDto.termsAccepted !== true) {
+          throw new ConflictException('Terms must be accepted');
+        }
+        updateData.termsAccepted = true;
       }
 
       Object.assign(user, updateData);

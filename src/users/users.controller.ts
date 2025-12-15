@@ -37,25 +37,33 @@ export class UsersController {
   @Post()
   @ApiOperation({ 
     summary: 'Create a new user (Signup)',
-    description: 'Register a new user account. Requires email, phone number, and password only.',
+    description: 'Register a new user account with profile details and role.',
   })
   @ApiBody({ 
     type: CreateUserDto,
     examples: {
       example1: {
-        summary: 'Signup with email, phone, and password',
+        summary: 'Signup as customer',
         value: {
+          role: 'CUSTOMER',
           email: 'user@example.com',
           phoneNumber: '9876543210',
           password: 'SecurePass123!',
+          favoriteCuisine: 'Italian',
+          city: 'New York',
+          termsAccepted: true,
         },
       },
       example2: {
-        summary: 'Another signup example',
+        summary: 'Signup as restaurant owner',
         value: {
+          role: 'RESTAURANT_OWNER',
           email: 'john.doe@example.com',
           phoneNumber: '9876543211',
           password: 'MyPassword123!',
+          favoriteCuisine: 'Mexican',
+          city: 'Chicago',
+          termsAccepted: true,
         },
       },
     },
@@ -69,7 +77,10 @@ export class UsersController {
         id: { type: 'number', example: 1 },
         email: { type: 'string', example: 'user@example.com' },
         phone: { type: 'string', example: '9876543210' },
-        role: { type: 'string', example: 'user' },
+        role: { type: 'string', example: 'CUSTOMER' },
+        favoriteCuisine: { type: 'string', example: 'Italian' },
+        city: { type: 'string', example: 'New York' },
+        termsAccepted: { type: 'boolean', example: true },
         isActive: { type: 'boolean', example: true },
         createdAt: { type: 'string', format: 'date-time' },
       },
@@ -82,7 +93,15 @@ export class UsersController {
   }
 
   @Get('profile')
-  @Roles(Role.User,Role.Admin)
+  @Roles(
+    Role.CUSTOMER,
+    Role.CHEF,
+    Role.RESTAURANT_OWNER,
+    Role.DELIVERY_PARTNER,
+    Role.SUPPLIER,
+    Role.ADMIN,
+    Role.SUPERADMIN,
+  )
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
@@ -98,7 +117,10 @@ export class UsersController {
         id: { type: 'number', example: 1 },
         email: { type: 'string', example: 'john.doe@example.com' },
         phone: { type: 'string', example: '9876543210' },
-        role: { type: 'string', example: 'user' },
+        role: { type: 'string', example: 'CHEF' },
+        favoriteCuisine: { type: 'string', example: 'Thai' },
+        city: { type: 'string', example: 'Seattle' },
+        termsAccepted: { type: 'boolean', example: true },
         isActive: { type: 'boolean', example: true },
       },
     },
@@ -110,7 +132,15 @@ export class UsersController {
   }
 
   @Get()
-  @Roles(Role.User,Role.Admin)
+  @Roles(
+    Role.CUSTOMER,
+    Role.CHEF,
+    Role.RESTAURANT_OWNER,
+    Role.DELIVERY_PARTNER,
+    Role.SUPPLIER,
+    Role.ADMIN,
+    Role.SUPERADMIN,
+  )
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
@@ -128,6 +158,10 @@ export class UsersController {
           id: { type: 'number', example: 1 },
           email: { type: 'string', example: 'john.doe@example.com' },
           phone: { type: 'string', example: '9876543210' },
+          role: { type: 'string', example: 'CUSTOMER' },
+          favoriteCuisine: { type: 'string', example: 'Italian' },
+          city: { type: 'string', example: 'New York' },
+          termsAccepted: { type: 'boolean', example: true },
         },
       },
     },
@@ -138,7 +172,15 @@ export class UsersController {
   }
 
   @Patch('profile')
-  @Roles(Role.User,Role.Admin)
+  @Roles(
+    Role.CUSTOMER,
+    Role.CHEF,
+    Role.RESTAURANT_OWNER,
+    Role.DELIVERY_PARTNER,
+    Role.SUPPLIER,
+    Role.ADMIN,
+    Role.SUPERADMIN,
+  )
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
@@ -151,9 +193,12 @@ export class UsersController {
       example1: {
         summary: 'Update multiple fields',
         value: {
+          role: 'CHEF',
           email: 'newemail@example.com',
-          phoneNumber: '9876543210',
           password: 'NewSecurePass123!',
+          favoriteCuisine: 'Thai',
+          city: 'Seattle',
+          termsAccepted: true,
         },
       },
       example2: {
@@ -163,12 +208,6 @@ export class UsersController {
         },
       },
       example3: {
-        summary: 'Update phone number',
-        value: {
-          phoneNumber: '9876543210',
-        },
-      },
-      example4: {
         summary: 'Update password',
         value: {
           password: 'NewSecurePass123!',
@@ -185,7 +224,10 @@ export class UsersController {
         id: { type: 'number', example: 1 },
         email: { type: 'string', example: 'user@example.com' },
         phone: { type: 'string', example: '9876543210' },
-        role: { type: 'string', example: 'user' },
+        role: { type: 'string', example: 'CHEF' },
+        favoriteCuisine: { type: 'string', example: 'Italian' },
+        city: { type: 'string', example: 'Seattle' },
+        termsAccepted: { type: 'boolean', example: true },
         isActive: { type: 'boolean', example: true },
         createdAt: { type: 'string', format: 'date-time' },
         updatedAt: { type: 'string', format: 'date-time' },
@@ -201,7 +243,15 @@ export class UsersController {
   }
 
 @Delete('profile')
-@Roles(Role.User,Role.Admin)
+@Roles(
+  Role.CUSTOMER,
+  Role.CHEF,
+  Role.RESTAURANT_OWNER,
+  Role.DELIVERY_PARTNER,
+  Role.SUPPLIER,
+  Role.ADMIN,
+  Role.SUPERADMIN,
+)
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth('JWT-auth')
 @ApiOperation({ 
@@ -236,4 +286,3 @@ remove(@GetUser('id') userId: number, @Body() deleteUserDto: DeleteUserDto) {
   return this.usersService.remove(userId, deleteUserDto);
 }
 }
-

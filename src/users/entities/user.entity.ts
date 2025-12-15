@@ -5,6 +5,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Role } from '../../common/enums/role.enum';
 
 @Entity({ name: 'users' })
 export class User {
@@ -20,6 +21,18 @@ export class User {
   @Column({ type: 'text', nullable: true })
   photoURL: string | null;
 
+  @Column({ type: 'enum', enum: Role, default: Role.CUSTOMER })
+  role: Role;
+
+  @Column({ type: 'varchar', length: 150, nullable: true })
+  favoriteCuisine: string | null;
+
+  @Column({ type: 'varchar', length: 150, default: '' })
+  city: string;
+
+  @Column({ type: 'boolean', default: false })
+  termsAccepted: boolean;
+
   @Column({
     name: 'password_hash',
     type: 'varchar',
@@ -27,9 +40,6 @@ export class User {
     select: false,
   })
   passwordHash: string;
-
-  @Column({ type: 'varchar', length: 20, default: 'user' })
-  role: string;
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;

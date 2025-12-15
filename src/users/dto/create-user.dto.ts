@@ -1,15 +1,28 @@
 import { Transform } from 'class-transformer';
 import {
+  Equals,
+  IsBoolean,
   IsEmail,
+  IsEnum,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Role } from '../../common/enums/role.enum';
 
 export class CreateUserDto {
+  @ApiProperty({
+    description: 'Role of the user',
+    enum: Role,
+    example: Role.CUSTOMER,
+  })
+  @IsEnum(Role, { message: 'Role must be one of the supported values' })
+  role: Role;
+
   @ApiProperty({
     description: 'Email address of the user',
     example: 'user@example.com',
@@ -52,5 +65,35 @@ export class CreateUserDto {
       'Password must include at least 1 uppercase, 1 lowercase, 1 number, and 1 special character',
   })
   password: string;
-}
 
+  @ApiProperty({
+    description: 'Favorite cuisine of the user',
+    example: 'Italian',
+    maxLength: 150,
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(150, { message: 'Favorite cuisine must be at most 150 characters' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  favoriteCuisine?: string;
+
+  @ApiProperty({
+    description: 'City of the user',
+    example: 'New York',
+    maxLength: 150,
+  })
+  @IsString()
+  @IsNotEmpty({ message: 'City is required' })
+  @MaxLength(150, { message: 'City must be at most 150 characters' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  city: string;
+
+  @ApiProperty({
+    description: 'Terms acceptance flag',
+    example: true,
+  })
+  @IsBoolean()
+  @Equals(true, { message: 'termsAccepted must be true' })
+  termsAccepted: boolean;
+}

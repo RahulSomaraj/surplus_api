@@ -8,11 +8,12 @@ import { join } from 'path';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt.auth.guard';
 import { APP_GUARD } from '@nestjs/core';
-import { AdminDashboardModule } from './admin-dashboard/admin-dashboard.module';
+import { RestaurantsModule } from './restaurants/restaurants.module';
 
 @Module({
   imports: [
     UsersModule,
+    RestaurantsModule,
     ConfigModule.forRoot({
       envFilePath: '.env',
       isGlobal: true,
@@ -63,7 +64,6 @@ import { AdminDashboardModule } from './admin-dashboard/admin-dashboard.module';
       },
     }),
     AuthModule,
-    AdminDashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
