@@ -1,5 +1,4 @@
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, UpdateDateColumn } from "typeorm";
-import { PrimaryGeneratedColumn } from "typeorm/browser";
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, UpdateDateColumn,PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('orders')
 export class Order {
