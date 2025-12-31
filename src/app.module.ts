@@ -9,6 +9,8 @@ import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt.auth.guard';
 import { APP_GUARD } from '@nestjs/core';
 import { RestaurantsModule } from './restaurants/restaurants.module';
+import { MenuModule } from './menu/menu.module';
+import { OrdersModule } from './orders/orders.module';
 
 @Module({
   imports: [
@@ -64,8 +66,10 @@ import { RestaurantsModule } from './restaurants/restaurants.module';
       },
     }),
     AuthModule,
+    MenuModule,
+    OrdersModule,
   ],
   controllers: [AppController],
-  providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
+  providers: [AppService],
 })
 export class AppModule {}
