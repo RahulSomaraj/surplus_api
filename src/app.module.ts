@@ -11,6 +11,8 @@ import { APP_GUARD } from '@nestjs/core';
 import { RestaurantsModule } from './restaurants/restaurants.module';
 import { MenuModule } from './menu/menu.module';
 import { OrdersModule } from './orders/orders.module';
+import { TablesModule } from './tables/tables.module';
+import { KotModule } from './kot/kot.module';
 
 @Module({
   imports: [
@@ -68,6 +70,8 @@ import { OrdersModule } from './orders/orders.module';
     AuthModule,
     MenuModule,
     OrdersModule,
+    TablesModule,
+    KotModule,
   ],
   controllers: [AppController],
   providers: [AppService],
